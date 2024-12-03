@@ -1,104 +1,94 @@
+import Form1 from './Components';
+import Form2 from './Components';
 import styles from './App.module.css';
-import { useState } from 'react';
 import { useRef } from 'react';
+import * as yup from 'yup';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
 
-function App() {
-	const [email, setEmail] = useState('');
-	const [password, setPassword] = useState('');
-	const [repass, setRepass] = useState('');
-	const [errorM, setErrorM] = useState(null);
-	const myRef = useRef(null);
-	const subOff = !email || !password || !repass || errorM;
-	const valid = {
-		emailRegexp: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-		passRegexp: /^[\p{N}\p{L}_]{0,20}$/gmu,
-	};
-	const mes = {
-		badpass:
+const fieldsScheme = yup.object().shape({
+	email: yup
+		.string()
+		.required('Введите email')
+		.matches(
+			/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+			'Неприемлемый email',
+		),
+
+	password: yup
+		.string()
+		.required('Введите пароль')
+		.matches(
+			/^[\p{N}\p{L}]{6,20}$/gmu,
 			'Недопустимый ввод. Пароль может содержать любые буквы и цифры и только. Не менеее 6 и не более 20 знаков.',
-		badmail: 'Неприемлемый адрес электронной почты',
-		small: 'Пароль слишком короткий. Менее 6 символов',
-		diff: 'Пароли должны совпадать',
+		),
+	repass: yup
+		.string()
+		.required('Введите пароль ещё раз')
+		.oneOf([yup.ref('password'), null], 'Пароли должны совпадать'),
+});
+function App() {
+	const btnRef = useRef(null);
+	const {
+		register,
+		handleSubmit,
+		formState: { errors },
+		reset,
+	} = useForm({
+		mode: 'onBlur',
+		defaultValues: {
+			email: '',
+			password: '',
+			repass: '',
+		},
+		resolver: yupResolver(fieldsScheme),
+	});
+
+	const btnOff = errors.email && errors.password && errors.repass;
+	const onBlur = () => {
+		if (!btnOff) btnRef.current.focus();
 	};
 
-	const onSubmit = (e) => {
-		e.preventDefault();
-		console.log(
-			'email-',
-			email,
-			'\n',
-			'password_1-',
-			password,
-			'\n',
-			'password_2-',
-			repass,
-			errorM,
-		);
-		setEmail('');
-		setPassword('');
-		setRepass('');
-	};
-	const emailBlur = () => {
-		// let error = null;
-		if (!valid.emailRegexp.test(email)) setErrorM(mes.badmail);
-		// setErrorM(error);
-	};
-
-	const onPassChange = ({ target }) => {
-		let error = null;
-		// !valid.emailRegexp.test(email)
-		// 	? (error = mes.badmail)
-		// : // setErrorM(mes.badmail)
-		setPassword(target.value);
-		if (password && !valid.passRegexp.test(target.value)) error = mes.badpass;
-		// setErrorM(mes.badpass);
-		setErrorM(error);
-	};
-	const passBlur = () => {
-		// if (password.length < 6) setErrorM(mes.small);
-	};
-
-	const onRepassChange = ({ target }) => {
-		setRepass(target.value);
-		if (!valid.passRegexp.test(target.value)) setErrorM(mes.badpass);
-	};
-	const repassBlur = () => {
-		repass !== password ? setErrorM(mes.diff) : myRef.current.focus();
+	const onSubmit = (formData) => {
+		console.log(formData);
+		reset();
 	};
 
 	return (
 		<>
-			<form className={styles.login} onSubmit={onSubmit}>
+			<form className={styles.login} onSubmit={handleSubmit(onSubmit)}>
 				<h1>Пройдите регистрацию </h1>
-				{errorM && <div className={styles.error}>{errorM}</div>}
+
+				{errors.email?.message && (
+					<p className={styles.error}>{errors.email?.message}</p>
+				)}
 				<input
 					type="email"
 					name="email"
-					value={email}
-					onChange={({ target }) => setEmail(target.value)}
-					onBlur={emailBlur}
+					{...register('email')}
 					className={styles['login-input']}
 					placeholder="Введите email"
 					autoFocus="on"
-					required={true}
-					autoComplete="on"
 				/>
+				{errors.password?.message && (
+					<p className={styles.error}>{errors.password.message}</p>
+				)}
 				<input
 					type="password"
 					name="password"
-					value={password}
-					onChange={onPassChange}
-					onBlur={passBlur}
+					{...register('password')}
 					className={styles['login-input']}
 					placeholder="Введите пароль"
 					autoComplete="on"
 				/>
+				{errors.repass?.message && (
+					<p className={styles.error}>{errors.repass.message}</p>
+				)}
 				<input
 					type="password"
 					name="reppass"
-					value={repass}
-					onChange={onRepassChange}
-					onBlur={repassBlur}
+					{...register('repass')}
+					onBlur={onBlur}
 					className={styles['login-input']}
 					placeholder="Повторите пароль"
 					autoComplete="on"
@@ -106,9 +96,8 @@ function App() {
 				<button
 					type="submit"
 					className={styles['login-submit']}
-					ref={myRef}
-					disabled={subOff}
-					// style={{ display: !!passwordError ? 'none' : 'block' }}
+					ref={btnRef}
+					disabled={btnOff}
 				>
 					Зарегистрироваться
 				</button>
